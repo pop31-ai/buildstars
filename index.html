@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Звезда Строителей</title>
+<style>
+:root{
+  --gold:#ffd54d; --gold2:#ffb300; --ink:#eaf2ff; --muted:#9fb3d4;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:"Segoe UI", Arial, sans-serif; color:var(--ink);
+  background:radial-gradient(120% 120% at 50% 0%, #2a3568 0%, #141a38 45%, #0a0e24 100%);
+  overflow-x:hidden;
+}
+/* ---- мерцающее звёздное небо ---- */
+#bg{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0;}
+.star{position:absolute; border-radius:50%; background:#fff; animation:twinkle var(--t) ease-in-out infinite;}
+@keyframes twinkle{0%,100%{opacity:.15; transform:scale(.7);}50%{opacity:1; transform:scale(1.3);}}
+.spark{position:absolute; width:var(--s); height:var(--s); background:
+  radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 60%);
+  animation:spk var(--t) ease-in-out infinite; opacity:0;}
+@keyframes spk{0%,100%{opacity:0; transform:rotate(45deg) scale(.4);}50%{opacity:1; transform:rotate(45deg) scale(1);}}
+.glow{position:fixed; inset:0; pointer-events:none; z-index:1;
+  background:radial-gradient(40% 30% at 50% 8%, rgba(255,200,90,.18), transparent 70%);}
+.aurora{position:fixed; width:60vmax; height:60vmax; border-radius:50%; filter:blur(70px);
+  opacity:.32; z-index:0; pointer-events:none; animation:drift 24s ease-in-out infinite;}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1) rotate(0deg);}
+  33%{transform:translate(10vmax,-7vmax) scale(1.18) rotate(20deg);}
+  66%{transform:translate(-8vmax,6vmax) scale(.9) rotate(-15deg);}}
+.floaty{position:fixed; bottom:-20px; width:6px; height:6px; border-radius:50%;
+  background:radial-gradient(circle,#fff,#ffd54d); z-index:1; pointer-events:none; animation:rise linear infinite;}
+@keyframes rise{0%{transform:translateY(0) scale(1); opacity:0;}
+  8%{opacity:1;}100%{transform:translateY(-112vh) scale(.3); opacity:0;}}
+.burst{position:fixed; border-radius:50%; pointer-events:none; z-index:16;
+  background:radial-gradient(circle, #fff 0%, rgba(255,215,110,.9) 40%, transparent 70%);
+  animation:burstf var(--t) ease-out forwards;}
+@keyframes burstf{0%{opacity:1; transform:translate(0,0) scale(.4);}
+  100%{opacity:0; transform:translate(var(--x),var(--y)) scale(1.25);}}
+
+#app{position:relative; z-index:2; max-width:1200px; margin:0 auto; padding:14px;}
+#screenSetup,#screenGame{width:100%;}
+[hidden]{display:none !important;}
+
+/* ---- заголовок ---- */
+.title{
+  text-align:center; font-size:clamp(30px,5vw,56px); font-weight:900; letter-spacing:2px;
+  background:linear-gradient(90deg,#ffd54d,#fff7d6,#ffb300,#fff7d6,#ffd54d);
+  background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:shimmer 3.5s linear infinite;
+  filter:drop-shadow(0 0 14px rgba(255,190,60,.55));
+}
+@keyframes shimmer{0%{background-position:0% 50%;}100%{background-position:200% 50%;}}
+.subtitle{text-align:center; color:var(--muted); font-size:14px; margin:6px 0 4px;}
+.tagline{text-align:center; color:var(--gold); font-weight:600; font-size:13px; letter-spacing:3px;}
+
+/* ---- панели ---- */
+.panel{
+  background:rgba(30,40,85,.55); border:1px solid rgba(150,180,255,.25);
+  border-radius:18px; padding:16px; backdrop-filter:blur(6px);
+  box-shadow:0 8px 30px rgba(0,0,0,.35), inset 0 0 30px rgba(255,255,255,.03);
+}
+.panel h2{font-size:15px; color:var(--gold); margin-bottom:10px; letter-spacing:1px;}
+
+/* ---- режим и игроки (экран настроек) ---- */
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:8px 0;}
+.modeBtn{
+  flex:1; min-width:220px; padding:14px; border-radius:14px; cursor:pointer; text-align:left;
+  border:2px solid rgba(150,180,255,.3); background:rgba(20,28,64,.6); color:var(--ink);
+  transition:all .2s; font-size:15px;
+}
+.modeBtn:hover{border-color:var(--gold); transform:translateY(-2px);}
+.modeBtn.sel{border-color:var(--gold); background:linear-gradient(135deg,rgba(255,190,60,.25),rgba(255,140,40,.12));
+  box-shadow:0 0 20px rgba(255,190,60,.35);}
+.modeBtn b{display:block; color:var(--gold); font-size:16px;}
+.playerRow{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:8px; margin:6px 0;
+  border:1px solid rgba(150,180,255,.18); border-radius:12px; background:rgba(20,28,64,.45);
+}
+.playerRow .pcol{width:18px; height:18px; border-radius:50%; flex:none; box-shadow:0 0 10px currentColor;}
+.playerRow input{flex:1; min-width:130px; background:rgba(10,16,40,.7); border:1px solid rgba(150,180,255,.3);
+  color:var(--ink); border-radius:8px; padding:8px 10px; font-size:14px;}
+.playerRow label{font-size:12px; color:var(--muted); min-width:80px;}
+.pawnSel{display:flex; gap:6px; flex-wrap:wrap;}
+.pawnBtn{width:46px; height:46px; border-radius:10px; cursor:pointer; border:2px solid rgba(150,180,255,.25);
+  background:rgba(12,18,44,.8); display:flex; align-items:center; justify-content:center; transition:all .15s;}
+.pawnBtn svg{width:34px; height:34px;}
+.pawnBtn:hover{border-color:var(--gold); transform:scale(1.08);}
+.pawnBtn.sel{border-color:var(--gold); background:rgba(255,190,60,.22); box-shadow:0 0 14px rgba(255,190,60,.5);}
+.pawnBtn:disabled{opacity:.25; cursor:not-allowed;}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  border:none; cursor:pointer; border-radius:14px; font-size:16px; font-weight:700;
+  padding:14px 26px; color:#231a06; position:relative; overflow:hidden;
+  background:linear-gradient(180deg,#ffe28a,#ffb300);
+  box-shadow:0 4px 0 #b47a00, 0 8px 22px rgba(255,180,40,.45);
+  transition:all .15s; letter-spacing:.5px;
+}
+.btn::after{content:""; position:absolute; top:0; left:-80%; width:60%; height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+  transform:skewX(-20deg); animation:sweep 2.6s infinite;}
+@keyframes sweep{0%{left:-80%;}55%,100%{left:135%;}}
+.btn:hover{transform:translateY(-2px); filter:brightness(1.06);}
+.btn:active{transform:translateY(1px); box-shadow:0 2px 0 #b47a00;}
+.btn.ghost{background:linear-gradient(180deg,#3a4a8f,#2c3a70); color:var(--ink);
+  box-shadow:0 4px 0 #1b2450, 0 8px 22px rgba(0,0,0,.3);}
+.btn.big{font-size:19px; padding:18px 40px; width:100%; margin-top:6px; animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 4px 0 #b47a00, 0 0 18px rgba(255,180,40,.35);}
+  50%{box-shadow:0 4px 0 #b47a00, 0 0 34px rgba(255,200,80,.75);}}
+.btn:disabled{opacity:.45; cursor:not-allowed; transform:none; filter:grayscale(.4);}
+.btn.small{padding:10px 18px; font-size:14px;}
+
+/* ---- игровой экран ---- */
+#gameTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+#gameTop .title{font-size:clamp(20px,3.5vw,34px);}
+.boardWrap{flex:1 1 520px; min-width:320px; display:flex; justify-content:center;}
+#board{width:100%; max-width:640px; filter:drop-shadow(0 12px 30px rgba(0,0,0,.5));}
+#board .cellGlow{animation:cellpulse 1.6s infinite;}
+@keyframes cellpulse{0%,100%{filter:drop-shadow(0 0 2px rgba(255,255,255,0));}
+  50%{filter:drop-shadow(0 0 12px var(--glowc, #ffd54d));}}
+#board .twink{animation:tcell 2.4s ease-in-out infinite;}
+@keyframes tcell{0%,100%{opacity:1;}50%{opacity:.55;}}
+#board .cellShine{animation:cellshine 3.6s ease-in-out infinite;}
+@keyframes cellshine{0%,100%{opacity:1;}50%{opacity:.72;}}
+#board .pawnGlow{animation:pawnpulse 1.6s infinite;}
+@keyframes pawnpulse{0%,100%{filter:drop-shadow(0 0 2px #fff);}
+  50%{filter:drop-shadow(0 0 12px #ffd54d);}}
+#board .edgePulse{animation:edgepulse 3.2s infinite;}
+@keyframes edgepulse{0%,100%{stroke-opacity:.45;}50%{stroke-opacity:1;}}
+
+.side{flex:1 1 380px; min-width:300px; display:flex; flex-direction:column; gap:12px;}
+/* кубики */
+.diceArea{display:flex; align-items:center; gap:16px; justify-content:center; min-height:96px; padding:10px;}
+.die{
+  width:72px; height:72px; border-radius:16px; display:grid; place-items:center;
+  background:linear-gradient(145deg,#fff,#d9e2f2); color:#1a2440;
+  box-shadow:0 6px 0 #9aa8c4, inset 0 -6px 12px rgba(0,0,0,.12);
+  font-weight:900; font-size:30px; transition:transform .1s;
+  animation:dieglow 1.8s infinite;
+}
+@keyframes dieglow{0%,100%{box-shadow:0 6px 0 #9aa8c4, 0 0 10px rgba(255,255,255,.15);}
+  50%{box-shadow:0 6px 0 #9aa8c4, 0 0 30px rgba(255,230,120,.95);}}
+.die.spin{animation:diespin .6s cubic-bezier(.2,.8,.3,1.2);}
+@keyframes diespin{0%{transform:translateY(-40px) rotate(-540deg) scale(.3); opacity:0;}
+  100%{transform:translateY(0) rotate(0) scale(1); opacity:1;}}
+.diePlaceholder{width:72px; height:72px; border:2px dashed rgba(150,180,255,.3); border-radius:16px; display:grid; place-items:center; color:var(--muted);}
+.rollSum{font-size:20px; font-weight:900; color:var(--gold); min-width:40px; text-align:center;}
+/* действие */
+.actionArea{display:flex; flex-direction:column; gap:8px; align-items:center;}
+.actionArea .turnName{font-size:15px; color:var(--muted);}
+.actionArea .prompt{font-size:16px; font-weight:700; color:var(--gold); text-align:center;}
+/* игроки */
+#players{display:flex; flex-direction:column; gap:8px;}
+.pcard{
+  display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:12px;
+  background:rgba(18,26,60,.6); border:2px solid transparent; transition:all .25s;
+}
+.pcard.active{border-color:var(--gold); box-shadow:0 0 18px rgba(255,190,60,.45); animation:cardglow 1.8s infinite;}
+@keyframes cardglow{0%,100%{box-shadow:0 0 8px rgba(255,190,60,.3);}50%{box-shadow:0 0 22px rgba(255,200,80,.7);}}
+.pcard .ico{width:40px; height:40px; flex:none;}
+.pcard .nm{flex:1;}
+.pcard .nm b{display:block; font-size:14px;}
+.pcard .nm span{font-size:11px; color:var(--muted);}
+.pcard .fl{display:flex; gap:3px; align-items:center;}
+.pcard .fl i{width:10px; height:16px; border-radius:2px; background:rgba(255,255,255,.12); border:1px solid rgba(150,180,255,.3);}
+.pcard .fl i.on{background:linear-gradient(180deg,#ffd54d,#ff9800); border-color:#ffb300; box-shadow:0 0 8px rgba(255,180,40,.8);}
+.mats{display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;}
+.mchip{font-size:11px; padding:2px 8px; border-radius:20px; background:rgba(12,18,44,.8); border:1px solid rgba(150,180,255,.25);}
+.mchip b{color:var(--gold);}
+/* лог */
+#log{max-height:150px; overflow-y:auto; font-size:12.5px; line-height:1.5;}
+#log div{border-bottom:1px solid rgba(150,180,255,.08); padding:3px 0; animation:fadein .4s;}
+#log div:first-child{color:var(--gold); font-weight:600;}
+@keyframes fadein{from{opacity:0; transform:translateX(-8px);}to{opacity:1;}}
+
+/* ---- победа ---- */
+#overlay{
+  position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+  background:rgba(6,8,20,.82); backdrop-filter:blur(6px);
+}
+.winCard{text-align:center; padding:40px 50px; border-radius:24px;
+  background:linear-gradient(160deg,#2c3568,#151b3d); border:2px solid var(--gold);
+  box-shadow:0 0 60px rgba(255,190,60,.5); animation:pop .5s cubic-bezier(.2,1.4,.4,1);}
+@keyframes pop{0%{transform:scale(.4); opacity:0;}100%{transform:scale(1); opacity:1;}}
+.winCard h2{font-size:34px; color:var(--gold); margin:6px 0 12px;
+  background:linear-gradient(90deg,#fff7d6,#ffb300,#fff7d6); background-size:200% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent; animation:shimmer 2s linear infinite;}
+.winCard p{color:var(--ink); font-size:17px; margin-bottom:18px;}
+.confetti{position:fixed; top:-20px; z-index:19; width:12px; height:18px; border-radius:3px; animation:fall linear infinite;}
+@keyframes fall{0%{transform:translateY(-5vh) rotate(0deg); opacity:1;}100%{transform:translateY(115vh) rotate(720deg); opacity:.7;}}
+.winDice{font-size:60px; color:var(--gold); animation:wobble 1.5s infinite;}
+@keyframes wobble{0%,100%{transform:rotate(-8deg);}50%{transform:rotate(8deg);}}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div class="aurora" style="background:radial-gradient(circle at 30% 30%, #3a6fff, transparent 60%); top:-15vmax; left:-10vmax;"></div>
+<div class="aurora" style="background:radial-gradient(circle at 60% 40%, #ff7ac2, transparent 55%); bottom:-18vmax; right:-12vmax; animation-delay:-8s;"></div>
+<div class="aurora" style="background:radial-gradient(circle at 50% 50%, #ffd54d, transparent 50%); top:30vmax; left:35vmax; animation-delay:-16s; opacity:.18;"></div>
+<div class="glow"></div>
+<div id="app">
+
+  <!-- ============ НАСТРОЙКИ ============ -->
+  <div id="screenSetup">
+    <div class="title">ЗВЕЗДА СТРОИТЕЛЕЙ</div>
+    <div class="subtitle">Строй башню, обходи звезду, возвращайся первым на базу</div>
+    <div class="tagline">стиль ПОЛИГРАЙ · играй офлайн и напечатай на резку</div>
+    <div style="height:16px"></div>
+
+    <div class="panel">
+      <h2>1. Режим игры</h2>
+      <div class="row">
+        <div class="modeBtn" data-mode="ai" id="modeAi">
+          <b>Против компьютера</b>
+          1 человек + 3 компьютера. Играй один.
+        </div>
+        <div class="modeBtn" data-mode="local" id="modeLocal">
+          <b>За одним экраном</b>
+          2–4 человека передают устройство по кругу.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="playersPanel">
+      <h2>2. Выбери красивую фишку</h2>
+      <div id="playerRows"></div>
+    </div>
+
+    <div class="panel" style="text-align:center">
+      <button class="btn big" id="btnStart">НАЧАТЬ СТРОЙКУ</button>
+    </div>
+  </div>
+
+  <!-- ============ ИГРА ============ -->
+  <div id="screenGame" hidden>
+    <div id="gameTop">
+      <div class="title" style="font-size:24px">ЗВЕЗДА СТРОИТЕЛЕЙ</div>
+      <button class="btn ghost small" id="btnNew">Новая игра</button>
+    </div>
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <div class="boardWrap">
+        <svg id="board" viewBox="0 0 420 594" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="side">
+        <div class="panel" style="flex:none">
+          <h2>Кубики</h2>
+          <div class="diceArea" id="diceArea">
+            <div class="diePlaceholder" id="dph">?</div>
+            <div class="die" id="die1" hidden></div>
+            <div class="die" id="die2" hidden></div>
+            <div class="rollSum" id="rollSum"></div>
+          </div>
+        </div>
+        <div class="panel actionArea" style="flex:none">
+          <div class="turnName" id="turnName"></div>
+          <div class="prompt" id="prompt"></div>
+          <div id="actionBtns"></div>
+        </div>
+        <div class="panel">
+          <h2>Строители</h2>
+          <div id="players"></div>
+        </div>
+        <div class="panel">
+          <h2>Ход игры</h2>
+          <div id="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" hidden>
+  <div class="winCard">
+    <div class="winDice">&#9825;&#9825;&#9825;</div>
+    <h2 id="winTitle">ПОБЕДА!</h2>
+    <p id="winText"></p>
+    <button class="btn big" id="btnAgain">Играть ещё</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= ГЕОМЕТРИЯ ЗВЕЗДЫ ================= */
+const CX=210, CY=320, ROUT=185, RIN=120;
+const MAT_NAMES={BRICK:"Кирпич",WOOD:"Дерево",STEEL:"Сталь",GLASS:"Стекло"};
+const MAT_ORDER=["BRICK","WOOD","STEEL","GLASS"];
+const PLAYER_COLORS=["#2f69c9","#2ea25f","#de3e34","#e2a925"];
+const PLAYER_RGB=[[47,105,201],[46,162,95],[222,62,52],[226,169,37]];
+function vertices(){const v=[];for(let i=0;i<8;i++){const a=(90-i*45)*Math.PI/180;const rr=i%2?RIN:ROUT;
+  v.push([CX+rr*Math.cos(a), CY-rr*Math.sin(a)]);}return v;}
+function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];}
+function buildCells(){
+  const v=vertices(), cells=[];
+  for(let s=0;s<4;s++){
+    const va=v[2*s], vb=v[2*s+1], vc=v[(2*s+2)%8];
+    const p1=lerp(va,vb,.27),p2=lerp(va,vb,.5),p3=lerp(va,vb,.73);
+    const q1=lerp(vb,vc,.27),q2=lerp(vb,vc,.5),q3=lerp(vb,vc,.73);
+    const row=[["BASE",s],["MAT",MAT_ORDER[0]],["EVENT"],["MAT",MAT_ORDER[1]],["FWD"],["MAT",MAT_ORDER[2]],["BACK"],["MAT",MAT_ORDER[3]]];
+    const pos=[va,p1,p2,p3,vb,q1,q2,q3];
+    for(let k=0;k<8;k++){
+      cells.push({i:s*8+k, x:pos[k][0], y:pos[k][1], type:row[k][0], mat:row[k][1], player:row[k][0]==="BASE"?s:-1});
+    }
+  }
+  return cells;
+}
+const CELLS=buildCells();
+
+/* ================= ПАУНЫ ================= */
+const PAWN_DEFS=[
+  ["Башенный кран","crane"],["Экскаватор","exc"],["Бульдозер","bull"],
+  ["Самосвал","dump"],["Автокран","acrane"],["Миксер","mix"],
+  ["Каток","roll"],["Подъёмник","lift"]
+];
+function pawnIcon(kind,c){
+  const s=(x)=>x.toFixed(1);
+  const body=c, dark="#1c2436";
+  let g="";
+  if(kind==="crane"){
+    g=`<rect x="46" y="22" width="8" height="58" fill="${body}" stroke="${dark}"/>
+      <rect x="30" y="16" width="52" height="8" rx="2" fill="${body}" stroke="${dark}"/>
+      <rect x="76" y="16" width="22" height="6" rx="2" fill="${c}" opacity=".8"/>
+      <line x1="30" y1="22" x2="10" y2="40" stroke="${dark}" stroke-width="4"/>
+      <circle cx="10" cy="42" r="3" fill="${dark}"/>`;
+  }else if(kind==="exc"){
+    g=`<rect x="16" y="66" width="68" height="12" rx="6" fill="${dark}"/>
+      <rect x="26" y="40" width="52" height="24" rx="4" fill="${body}" stroke="${dark}"/>
+      <rect x="24" y="18" width="10" height="26" fill="${body}" stroke="${dark}"/>
+      <line x1="29" y1="22" x2="74" y2="46" stroke="${dark}" stroke-width="8"/>
+      <path d="M66 40 L88 52 L80 60 L60 50 Z" fill="${body}" stroke="${dark}"/>`;
+  }else if(kind==="bull"){
+    g=`<rect x="14" y="64" width="72" height="12" rx="6" fill="${dark}"/>
+      <rect x="34" y="34" width="52" height="28" rx="4" fill="${body}" stroke="${dark}"/>
+      <path d="M18 30 Q4 44 20 60 L36 60 L36 30 Z" fill="${body}" stroke="${dark}"/>
+      <rect x="12" y="20" width="20" height="8" rx="2" fill="${body}" stroke="${dark}"/>`;
+  }else if(kind==="dump"){
+    g=`<circle cx="30" cy="72" r="8" fill="${dark}"/><circle cx="68" cy="72" r="8" fill="${dark}"/>
+      <rect x="18" y="44" width="22" height="22" rx="3" fill="${body}" stroke="${dark}"/>
+      <path d="M40 44 L52 44 L60 64 L40 64 Z" fill="${body}" stroke="${dark}"/>`;
+  }else if(kind==="acrane"){
+    g=`<circle cx="30" cy="74" r="7" fill="${dark}"/><circle cx="66" cy="74" r="7" fill="${dark}"/>
+      <rect x="18" y="48" width="24" height="22" rx="3" fill="${body}" stroke="${dark}"/>
+      <rect x="42" y="52" width="6" height="22" fill="${body}" stroke="${dark}"/>
+      <line x1="48" y1="52" x2="88" y2="18" stroke="${dark}" stroke-width="6"/>
+      <line x1="84" y1="20" x2="96" y2="16" stroke="${dark}" stroke-width="3"/>
+      <line x1="88" y1="18" x2="88" y2="34" stroke="${dark}" stroke-width="2"/>
+      <circle cx="88" cy="36" r="2.5" fill="${dark}"/>`;
+  }else if(kind==="mix"){
+    g=`<circle cx="28" cy="74" r="7" fill="${dark}"/><circle cx="66" cy="74" r="7" fill="${dark}"/>
+      <rect x="16" y="48" width="22" height="22" rx="3" fill="${body}" stroke="${dark}"/>
+      <ellipse cx="56" cy="54" rx="20" ry="14" fill="${body}" stroke="${dark}"/>
+      <line x1="42" y1="48" x2="70" y2="46" stroke="${dark}" stroke-width="3"/>
+      <line x1="44" y1="58" x2="70" y2="58" stroke="${dark}" stroke-width="3"/>`;
+  }else if(kind==="roll"){
+    g=`<rect x="16" y="50" width="22" height="16" rx="3" fill="${body}" stroke="${dark}"/>
+      <circle cx="56" cy="60" r="22" fill="${body}" stroke="${dark}" stroke-width="4"/>
+      <circle cx="56" cy="60" r="8" fill="${dark}"/>
+      <line x1="20" y1="46" x2="34" y2="40" stroke="${dark}" stroke-width="5"/>`;
+  }else{
+    g=`<rect x="14" y="70" width="72" height="10" rx="3" fill="${dark}"/>
+      <line x1="26" y1="70" x2="34" y2="40" stroke="${dark}" stroke-width="4"/>
+      <line x1="40" y1="70" x2="48" y2="40" stroke="${dark}" stroke-width="4"/>
+      <line x1="54" y1="70" x2="62" y2="40" stroke="${dark}" stroke-width="4"/>
+      <line x1="68" y1="70" x2="76" y2="40" stroke="${dark}" stroke-width="4"/>
+      <rect x="24" y="26" width="54" height="16" rx="3" fill="${body}" stroke="${dark}"/>`;
+  }
+  return g;
+}
+function pawnSVG(pi,color,size){
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}">${pawnIcon(PAWN_DEFS[pi][1],color)}</svg>`;
+}
+
+/* ================= ИКОНКИ КЛЕТОК ================= */
+function cellIcon(typ,mat){
+  const dark="#233";
+  if(typ==="MAT"){
+    if(mat==="BRICK") return `<g fill="#b23c2c" stroke="#7a2719"><rect x="8" y="14" width="26" height="9" rx="1"/><rect x="40" y="14" width="26" height="9" rx="1"/><rect x="14" y="29" width="26" height="9" rx="1"/><rect x="46" y="29" width="26" height="9" rx="1"/><rect x="8" y="44" width="26" height="9" rx="1"/><rect x="40" y="44" width="26" height="9" rx="1"/></g>`;
+    if(mat==="WOOD") return `<g fill="#b07c3e" stroke="#6d4a26" stroke-width="3"><rect x="8" y="16" width="58" height="10"/><rect x="8" y="32" width="58" height="10"/><rect x="8" y="48" width="58" height="10"/></g>`;
+    if(mat==="STEEL") return `<g fill="#8897aa" stroke="#46535f"><rect x="18" y="10" width="38" height="9"/><rect x="18" y="55" width="38" height="9"/><rect x="31" y="19" width="12" height="36"/><circle cx="31" cy="24" r="2.5" fill="#46535f"/><circle cx="43" cy="24" r="2.5" fill="#46535f"/><circle cx="31" cy="50" r="2.5" fill="#46535f"/><circle cx="43" cy="50" r="2.5" fill="#46535f"/></g>`;
+    return `<g fill="#78bee6" stroke="#fff" stroke-width="2"><rect x="8" y="14" width="26" height="24" rx="2"/><rect x="40" y="14" width="26" height="24" rx="2"/><rect x="8" y="40" width="26" height="24" rx="2"/><rect x="40" y="40" width="26" height="24" rx="2"/><line x1="16" y1="60" x2="46" y2="18" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>`;
+  }
+  if(typ==="EVENT") return `<rect x="16" y="8" width="42" height="58" rx="6" fill="#8c60be"/><text x="37" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#fff">?</text>`;
+  if(typ==="FWD"||typ==="BACK"){
+    const m=typ==="FWD"?1:-1;
+    const px=(x)=>m===1?x:74-x;
+    return `<path d="M${px(14)} 37 L${px(30)} 50 L${px(14)} 63 L${px(20)} 63 L${px(37)} 50 L${px(20)} 37 Z" fill="#38465a"/>
+      <path d="M${px(38)} 37 L${px(54)} 50 L${px(38)} 63 L${px(44)} 63 L${px(61)} 50 L${px(44)} 37 Z" fill="#38465a"/>`;
+  }
+  return "";
+}
+function cellFill(typ,mat,player){
+  if(typ==="BASE") return PLAYER_COLORS[player];
+  if(typ==="MAT"){
+    const m={BRICK:[244,224,219],WOOD:[240,230,215],STEEL:[222,228,238],GLASS:[216,235,248]}[mat];
+    return `rgb(${m[0]},${m[1]},${m[2]})`;
+  }
+  if(typ==="EVENT") return "#eee3fa";
+  return "#e4ecf4";
+}
+function cellBorder(typ,mat,player){
+  if(typ==="BASE") return "#ffffff";
+  if(typ==="MAT") return {BRICK:"#b23c2c",WOOD:"#8a5a2b",STEEL:"#55606e",GLASS:"#3c8fc9"}[mat];
+  if(typ==="EVENT") return "#8c60be";
+  return "#667a95";
+}
+function cellLabel(typ,mat,player){
+  if(typ==="BASE") return ["СИНИЙ","ЗЕЛЁНЫЙ","КРАСНЫЙ","ЗОЛОТОЙ"][player];
+  if(typ==="MAT") return {BRICK:"КИРПИЧ",WOOD:"ДЕРЕВО",STEEL:"СТАЛЬ",GLASS:"СТЕКЛО"}[mat];
+  if(typ==="EVENT") return "СОБЫТИЕ";
+  if(typ==="FWD") return "+2";
+  return "-2";
+}
+
+/* ================= СОБЫТИЯ ================= */
+const EVENT_DECK=[
+  ["Поставка","+2 материала",3],["Ассортимент","+1 материал каждого типа",2],
+  ["Попутный ветер","Передвинься на 3 вперёд",2],["Яма на дороге","Вернись на 3 назад",2],
+  ["Выходной","Пропусти ход",2],["Клад","+3 материала",1],
+  ["Скоростной режим","Передвинься на 5 вперёд",1],["Авария","Вернись на 5 назад",1],
+  ["Двойная смена","Брось кубики ещё раз и двигайся",1],["Потерянный ящик","Отдай 1 материал в банк",1]
+];
+let deck=[],discard=[];
+function buildDeck(){deck=[];discard=[];for(const[n,e,c]of EVENT_DECK)for(let i=0;i<c;i++)deck.push({n,e});shuffle(deck);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+function drawCard(){if(!deck.length){deck=discard;discard=[];shuffle(deck);}return deck.pop();}
+
+/* ================= СОСТОЯНИЕ ================= */
+const M=()=>Math.floor(Math.random()*4);
+let G=null;
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function mkPlayer(idx,human,name,pawn){
+  return {idx,name,human,pawn,color:PLAYER_COLORS[idx],mats:[0,0,0,0],
+    floors:0,pos:idx*8,base:idx*8,skipNext:false};
+}
+
+async function startGame(cfg){
+  buildDeck();
+  const players=[];
+  for(let i=0;i<4;i++){
+    const human=cfg.humans.includes(i);
+    const pawn=cfg.pawns[i];
+    const name=cfg.names[i]||(human?("Строитель "+(i+1)):("Компьютер "+(i+1)));
+    players.push(mkPlayer(i,human,name,pawn));
+  }
+  // первым ходит тот, кто выбросил больше (переброс случайный для ИИ-старта)
+  G={players,turn:0,phase:"idle",dice:[0,0],turns:0,maxTurns:90,winner:null,log:[],busy:true};
+  logMsg("Стройка началась! Собери 3 этажа башни.");
+  logMsg("Первый ход — по броску кубиков.");
+  const startIdx=Math.floor(Math.random()*4);
+  G.turn=startIdx;
+  showGame();
+  await sleep(700);
+  beginPlayerTurn();
+}
+
+function logMsg(s){G.log.unshift(s);if(G.log.length>60)G.log.pop();renderLog();}
+
+function current(){return G.players[G.turn];}
+
+async function beginPlayerTurn(){
+  if(G.winner)return;
+  const p=current();
+  if(p.skipNext){
+    p.skipNext=false;
+    logMsg(`💤 ${p.name} пропускает ход (Выходной)`);
+    await sleep(700);
+    return nextPlayer();
+  }
+  G.phase="roll";
+  renderAll();
+  if(p.human){
+    // ждём нажатия кнопки
+  }else{
+    await sleep(900);
+    await doRoll();
+  }
+}
+
+function nextPlayer(){
+  if(G.winner)return;
+  G.turn=(G.turn+1)%4;
+  if(G.turn===0){G.turns++; if(G.turns>=G.maxTurns){finishByScore();return;}}
+  beginPlayerTurn();
+}
+
+async function doRoll(){
+  if(G.winner||G.phase!=="roll")return;
+  const p=current();
+  G.phase="moving";
+  renderAll();
+  const d1=1+Math.floor(Math.random()*6), d2=1+Math.floor(Math.random()*6);
+  G.dice=[d1,d2];
+  animateDice();
+  burstAt("diceArea",12);
+  const sum=d1+d2;
+  logMsg(`🎲 ${p.name} бросил кубики: ${d1} и ${d2} = ${sum}`);
+  await sleep(750);
+  const moved=moveAndResolve(p,sum);
+  await sleep(450);
+  if(moved.win){ win(p); return; }
+  if(moved.buildNow){
+    G.phase="build";
+    renderAll();
+    if(p.human){
+      // ждём кнопки
+    }else{
+      await sleep(900);
+      const rnd=await aiBuild(p);
+      if(rnd)await sleep(500);
+      return nextPlayer();
+    }
+  }else{
+    return nextPlayer();
+  }
+}
+
+function moveAndResolve(p,steps){
+  const start=p.pos;
+  let pos=start, crossed=false, landed=false;
+  for(let i=0;i<steps;i++){pos=(pos+1)%32;if(pos===p.base)crossed=true;}
+  landed=(pos===p.base);
+  p.pos=pos;
+  const cell=CELLS[p.pos];
+  let buildNow=crossed;
+  if(cell.type==="MAT"){
+    p.mats[MAT_ORDER.indexOf(cell.mat)]++;
+    logMsg(`🧱 ${p.name} на складе: +1 ${MAT_NAMES[cell.mat]}`);
+  }else if(cell.type==="EVENT"){
+    resolveEvent(p);
+  }else if(cell.type==="FWD"){
+    logMsg(`➡️ ${p.name} на стрелке: ещё +2 вперёд`);
+    p.pos=(p.pos+2)%32;
+  }else if(cell.type==="BACK"){
+    logMsg(`⬅️ ${p.name} на стрелке: назад на 2`);
+    p.pos=(p.pos-2+32)%32;
+  }else if(cell.type==="BASE"){
+    if(p.pos===p.base&&landed){
+      p.mats[M()]++;
+      logMsg(`🏠 ${p.name} ровно на базе: +1 материал`);
+    }
+  }
+  if(buildNow||p.pos===p.base){
+    if(p.floors>=3){
+      return{win:true};
+    }
+    return{buildNow:true};
+  }
+  return{buildNow:false};
+}
+
+function resolveEvent(p){
+  const c=drawCard(); discard.push(c);
+  logMsg(`✨ Событие: «${c.n}» — ${c.e}`);
+  burstBoard(10);
+  const n=c.n;
+  if(n==="Поставка"){p.mats[M()]++;p.mats[M()]++;logMsg("   +2 материала");}
+  else if(n==="Ассортимент"){p.mats[0]++;p.mats[1]++;p.mats[2]++;p.mats[3]++;logMsg("   +1 каждого типа");}
+  else if(n==="Клад"){p.mats[M()]++;p.mats[M()]++;p.mats[M()]++;logMsg("   +3 материала");}
+  else if(n==="Потерянный ящик"){const have=MAT_ORDER.filter((_,i)=>p.mats[i]>0);if(have.length){p.mats[MAT_ORDER.indexOf(have[Math.floor(Math.random()*have.length)])]--;logMsg("   -1 материал");}}
+  else if(n==="Выходной"){p.skipNext=true;logMsg("   следующий ход — пропуск");}
+  else if(n==="Попутный ветер"||n==="Скоростной режим"){const st=n.includes("5")?5:3;p.pos=(p.pos+st)%32;logMsg(`   вперёд на ${st}`);}
+  else if(n==="Яма на дороге"||n==="Авария"){const st=n.includes("5")?5:3;p.pos=(p.pos-st+32)%32;logMsg(`   назад на ${st}`);}
+  else if(n==="Двойная смена"){const d1=1+Math.floor(Math.random()*6),d2=1+Math.floor(Math.random()*6);const s=d1+d2;p.pos=(p.pos+s)%32;G.dice=[d1,d2];animateDice();logMsg(`   ещё бросок: ${d1}+${d2}=${s}`);}
+}
+
+function buildCost(){
+  const p=current();
+  return p.mats.filter(x=>x>0).reduce((a,b)=>a+b,0)>=3;
+}
+async function aiBuild(p){
+  if(buildCost()){
+    return buildFloor(p);
+  }
+  logMsg(`${p.name} не строит (мало материалов)`);
+  return false;
+}
+async function buildFloor(p){
+  // списываем 3 материала из самых больших кучек
+  const idxs=MAT_ORDER.map((_,i)=>i).sort((a,b)=>p.mats[b]-p.mats[a]).slice(0,3);
+  for(const i of idxs)p.mats[i]--;
+  p.floors++;
+  logMsg(`🏗️ ${p.name} построил этаж ${p.floors}! Башня из ${p.floors} этажей.`);
+  renderAll();
+  burstBoard(24);
+  if(p.floors>=3&&p.pos===p.base){
+    return win(p);
+  }
+  return true;
+}
+function win(p){
+  G.winner=p.idx;
+  G.phase="done";
+  logMsg(`👑 ${p.name} победил!`);
+  renderAll();
+  showWin(p);
+  return true;
+}
+function finishByScore(){
+  const ps=[...G.players].sort((a,b)=>b.floors-a.floors||(sum(b)-sum(a)));
+  logMsg("Ходы закончились. Победа по башням!");
+  renderAll();
+  showWin(ps[0]);
+}
+const sum=(p)=>p.mats.reduce((a,b)=>a+b,0);
+
+function humanRoll(){if(G&&G.phase==="roll")doRoll();}
+async function humanBuild(){if(G&&G.phase==="build"){await buildFloor(current());await sleep(300);return nextPlayer();}}
+async function humanPass(){if(G&&G.phase==="build"){logMsg(`${current().name} пока не строит`);return nextPlayer();}}
+
+/* ================= РЕНДЕР ================= */
+function $(id){return document.getElementById(id);}
+function el(tag,attrs,html){const e=document.createElement(tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(html!==undefined)e.innerHTML=html;return e;}
+
+function showGame(){$("screenSetup").hidden=true;$("screenGame").hidden=false;}
+function renderAll(){renderBoard();renderPlayers();renderDice();renderAction();}
+
+function renderBoard(){
+  const svg=$("board"); svg.innerHTML="";
+  const defs=el("defs","",`
+    <radialGradient id="bgStar" cx="50%" cy="50%"><stop offset="0%" stop-color="#fff" stop-opacity=".92"/><stop offset="100%" stop-color="#eaf1ff" stop-opacity=".85"/></radialGradient>
+    <linearGradient id="goldEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe28a"/><stop offset="50%" stop-color="#ffb300"/><stop offset="100%" stop-color="#ffe28a"/>
+    </linearGradient>`);
+  svg.appendChild(defs);
+  // корпус звезды
+  const v=vertices();
+  const pts=v.map(p=>p.join(",")).join(" ");
+  svg.appendChild(el("polygon",{points:pts,fill:"rgba(220,232,248,.14)",stroke:"url(#goldEdge)",strokeWidth:3,"stroke-opacity":.7,class:"edgePulse"}));
+  // мэрия
+  svg.appendChild(el("circle",{cx:CX,cy:CY,r:58,fill:"rgba(255,255,255,.92)",stroke:"rgba(255,190,60,.8)",strokeWidth:2}));
+  svg.appendChild(el("text",{x:CX,y:CY-16,fill:"#1c2440","text-anchor":"middle","font-size":13,"font-weight":"800"},"МЭРИЯ"));
+  svg.appendChild(el("text",{x:CX,y:CY,fill:"#5a6a88","text-anchor":"middle","font-size":6.5},"Обойди звезду и построй башню"));
+  svg.appendChild(el("text",{x:CX,y:CY+10,fill:"#c94a2a","text-anchor":"middle","font-size":8,"font-weight":"800"},"Этаж = 3 материала"));
+  svg.appendChild(el("circle",{cx:CX,cy:CY+26,r:12,fill:"none",stroke:"rgba(255,190,60,.5)",strokeWidth:1.5}));
+  // башни
+  for(let s=0;s<4;s++){
+    const tip=v[2*s]; const dx=tip[0]-CX,dy=tip[1]-CY; const L=Math.hypot(dx,dy);
+    const ux=dx/L,uy=dy/L;
+    const p=G?G.players[s]:null; const floors=p?p.floors:0;
+    for(let k=0;k<3;k++){
+      const dist=0.46*ROUT+k*0.12*ROUT;
+      const tx=CX+ux*dist, ty=CY+uy*dist;
+      const w=15,h=9;
+      const on=floors>=k+1;
+      svg.appendChild(el("rect",{x:tx-w/2,y:ty-h/2,width:w,height:h,rx:2.5,
+        fill:on?"url(#goldEdge)":"rgba(255,255,255,.25)",stroke:PLAYER_COLORS[s],strokeWidth:1.6}));
+      svg.appendChild(el("text",{x:tx,y:ty+2.5,fill:on?"#231a06":PLAYER_COLORS[s],"text-anchor":"middle","font-size":6.5,"font-weight":"800"},k+1));
+    }
+    // кран-палочка у башни
+    const bx=CX+ux*(0.46*ROUT)-uy*11, by=CY+uy*(0.46*ROUT)+ux*11;
+    svg.appendChild(el("line",{x1:bx-ux*6,y1:by-uy*6,x2:bx+ux*8,y2:by+uy*8,stroke:"#8897aa",strokeWidth:2}));
+    svg.appendChild(el("line",{x1:bx+ux*8,y1:by+uy*8,x2:bx+ux*8+uy*5,y2:by+uy*8-ux*5,stroke:"#8897aa",strokeWidth:2}));
+    svg.appendChild(el("circle",{cx:bx+ux*8+uy*5,cy:by+uy*8-ux*5,r:1.8,fill:"#e0553c"}));
+  }
+  // клетки
+  for(const c of CELLS){
+    const r=c.type==="BASE"?20:14.5;
+    const isActiveBase=G&&G.turn===c.player&&c.type==="BASE";
+    const circle=el("circle",{cx:c.x,cy:c.y,r,fill:cellFill(c.type,c.mat,c.player),
+      stroke:cellBorder(c.type,c.mat,c.player),strokeWidth:c.type==="BASE"?3:2.2});
+    if(isActiveBase){circle.setAttribute("class","cellGlow");circle.setAttribute("style",`--glowc:${PLAYER_COLORS[c.player]}`);}
+    else{circle.setAttribute("class","cellShine");circle.setAttribute("style",`animation-delay:${(c.i*0.23)%4}s`);}
+    svg.appendChild(circle);
+    if(c.type==="BASE"){
+      svg.appendChild(el("text",{x:c.x,y:c.y-3,fill:"#fff","text-anchor":"middle","font-size":8.5,"font-weight":"800"},"БАЗА"));
+      svg.appendChild(el("text",{x:c.x,y:c.y+7,fill:"#fff","text-anchor":"middle","font-size":5.5,"font-weight":"700"},cellLabel(c.type,c.mat,c.player)));
+    }else{
+      const g=el("g",{transform:`translate(${c.x},${c.y}) scale(0.38) translate(-37,-37)`});
+      g.innerHTML=cellIcon(c.type,c.mat);
+      g.setAttribute("class",c.type==="EVENT"?"twink":"");
+      svg.appendChild(g);
+    }
+    svg.appendChild(el("text",{x:c.x-3,y:c.y+20,fill:"#aebbd6","font-size":4.5},c.i+1));
+  }
+  // фишки
+  for(const p of G?G.players:[]){
+    const c=CELLS[p.pos];
+    const off=[[-9,9],[9,-9],[-9,-9],[9,9]][p.idx];
+    const g=el("g",{transform:`translate(${c.x+off[0]},${c.y+off[1]})`});
+    const ring=el("circle",{r:13,fill:"#fff",stroke:PLAYER_COLORS[p.idx],strokeWidth:2.5});
+    if(G.turn===p.idx)ring.setAttribute("class","pawnGlow");
+    g.appendChild(ring);
+    const inner=el("g",{transform:"scale(.3) translate(-167,-167)"});
+    inner.innerHTML=pawnIcon(PAWN_DEFS[p.pawn][1],PLAYER_COLORS[p.idx]);
+    g.appendChild(inner);
+    svg.appendChild(g);
+  }
+}
+function renderPlayers(){
+  const box=$("players"); box.innerHTML="";
+  for(const p of G?G.players:[]){
+    const card=el("div",{class:"pcard"+(G.turn===p.idx?" active":"")});
+    const ico=el("div",{class:"ico"}); ico.innerHTML=pawnSVG(p.pawn,p.color,40);
+    const nm=el("div",{class:"nm"});
+    nm.appendChild(el("b",{},p.name+(p.human?"":" (ИИ)")));
+    nm.appendChild(el("span",{},`Этажей: ${p.floors}/3`));
+    const mats=el("div",{class:"mats"});
+    MAT_ORDER.forEach((m,i)=>{
+      mats.appendChild(el("span",{class:"mchip"},`${MAT_NAMES[m][0].toUpperCase()} <b>${p.mats[i]}</b>`));
+    });
+    nm.appendChild(mats);
+    const fl=el("div",{class:"fl"});
+    for(let k=0;k<3;k++)fl.appendChild(el("i",{class:p.floors>k?"on":""}));
+    card.appendChild(ico);card.appendChild(nm);card.appendChild(fl);
+    box.appendChild(card);
+  }
+}
+function renderDice(){
+  const d1=$("die1"),d2=$("die2"),ph=$("dph"),rs=$("rollSum");
+  if(G&&G.dice[0]){
+    d1.hidden=false;d2.hidden=false;ph.hidden=true;
+    d1.textContent=G.dice[0];d2.textContent=G.dice[1];
+    rs.textContent=(G.dice[0]+G.dice[1]);
+  }else{
+    d1.hidden=true;d2.hidden=true;ph.hidden=false;rs.textContent="";
+  }
+}
+function animateDice(){
+  const d1=$("die1"),d2=$("die2");
+  [d1,d2].forEach(d=>{d.classList.remove("spin");void d.offsetWidth;d.classList.add("spin");});
+}
+function renderAction(){
+  const p=G?current():null;
+  const name=$("turnName"),prompt=$("prompt"),btns=$("actionBtns");
+  btns.innerHTML="";
+  if(!G){return;}
+  if(G.phase==="done"){name.textContent="";prompt.textContent="Игра завершена";return;}
+  name.textContent=`Ходит: ${p.name}`;
+  if(G.phase==="roll"){
+    prompt.textContent="Брось кубики!";
+    const b=el("button",{class:"btn big",id:"btnRoll"},"🎲 БРОСИТЬ КУБИКИ");
+    b.onclick=humanRoll;
+    btns.appendChild(b);
+    if(!p.human)b.disabled=true;
+  }else if(G.phase==="build"){
+    const can=buildCost()&&p.floors<3;
+    prompt.textContent=can?"Можно построить этаж (3 материала)":"На базе. Нужно 3 материала для этажа";
+    const b1=el("button",{class:"btn big"},"🏗️ ПОСТРОИТЬ ЭТАЖ");
+    b1.onclick=humanBuild; if(!can)b1.disabled=true;
+    const b2=el("button",{class:"btn ghost"},"Продолжить");
+    b2.onclick=humanPass;
+    btns.appendChild(b1);btns.appendChild(b2);
+    if(!p.human){b1.disabled=true;b2.disabled=true;}
+  }else{
+    prompt.textContent="…";
+  }
+}
+function renderLog(){
+  const box=$("log"); box.innerHTML="";
+  for(const s of G.log){box.appendChild(el("div",{},s));}
+}
+
+/* ================= ПОБЕДА ================= */
+function showWin(p){
+  const ov=$("overlay"); ov.hidden=false;
+  $("winTitle").textContent="ПОБЕДА!";
+  $("winText").textContent=`${p.name} первым построил башню из ${Math.max(p.floors,3)} этажей!`;
+  ov.appendChild(confetti());
+  for(let i=0;i<6;i++)setTimeout(()=>burst(Math.random()*innerWidth,Math.random()*innerHeight,18),i*350);
+  try{navigator.vibrate&&navigator.vibrate([200,80,200]);}catch(e){}
+}
+function confetti(){
+  const wrap=el("div",{style:"position:fixed;inset:0;pointer-events:none;z-index:19"});
+  const cols=["#ffd54d","#ff9800","#ff5d5d","#4dd0ff","#7bed8a","#e066ff","#fff"];
+  for(let i=0;i<90;i++){
+    const s=el("div",{class:"confetti"});
+    s.style.left=(Math.random()*100)+"vw";
+    s.style.background=cols[i%cols.length];
+    s.style.width=(6+Math.random()*8)+"px";
+    s.style.height=(8+Math.random()*12)+"px";
+    s.style.animationDuration=(2.2+Math.random()*2.5)+"s";
+    s.style.animationDelay=(Math.random()*2)+"s";
+    wrap.appendChild(s);
+  }
+  return wrap;
+}
+$("btnAgain").onclick=()=>{const ov=$("overlay");ov.hidden=true;ov.querySelector(".confetti-wrap")&&0;location.reload();};
+
+/* ================= НАСТРОЙКИ ================= */
+const CFG={mode:"ai",humans:[0],names:["","","",""],pawns:null};
+function setupScreen(){
+  $("modeAi").classList.add("sel");
+  $("modeAi").onclick=()=>{setMode("ai");};
+  $("modeLocal").onclick=()=>{setMode("local");};
+  renderPlayersPanel();
+}
+function setMode(m){CFG.mode=m;
+  $("modeAi").classList.toggle("sel",m==="ai");
+  $("modeLocal").classList.toggle("sel",m==="local");
+  CFG.humans=m==="ai"?[0]:[0,1];
+  renderPlayersPanel();
+}
+function renderPlayersPanel(){
+  const box=$("playerRows"); box.innerHTML="";
+  if(CFG.mode==="local"){
+    const cntRow=el("div",{class:"row"});
+    cntRow.appendChild(el("label",{}, "Игроков за экраном:"));
+    [2,3,4].forEach(n=>{
+      const b=el("button",{class:"modeBtn "+(CFG.humans.length===n?"sel":""),type:"button",
+        style:"flex:0 0 84px;min-width:84px;text-align:center;padding:8px"});
+      b.innerHTML=`<b>${n}</b>`;
+      b.onclick=()=>{CFG.humans=Array.from({length:n},(_,i)=>i);renderPlayersPanel();};
+      cntRow.appendChild(b);
+    });
+    box.appendChild(cntRow);
+  }
+  const humanCount=CFG.mode==="ai"?1:CFG.humans.length;
+  const used=[];
+  for(let i=0;i<4;i++){
+    const human=i<humanCount;
+    const row=el("div",{class:"playerRow"});
+    row.style.borderLeft=`5px solid ${PLAYER_COLORS[i]}`;
+    const nameInput=el("input",{placeholder:human?(i===0?"Ты":"Строитель "+(i+1)):"Компьютер "+(i+1),maxlength:14});
+    nameInput.oninput=e=>CFG.names[i]=e.target.value;
+    if(!human)nameInput.disabled=true;
+    const sel=el("div",{class:"pawnSel"});
+    for(let k=0;k<PAWN_DEFS.length;k++){
+      const b=el("button",{class:"pawnBtn",type:"button"});
+      b.innerHTML=pawnSVG(k,PLAYER_COLORS[i],34);
+      b.onclick=()=>{
+        if(CFG.pawns&&CFG.pawns.includes(k)&&CFG.pawns[i]!==k){return;}
+        CFG.pawns=CFG.pawns||[-1,-1,-1,-1];
+        for(let j=0;j<4;j++)if(CFG.pawns[j]===k)CFG.pawns[j]=-1;
+        CFG.pawns[i]=CFG.pawns[i]===k?-1:k;
+        renderPlayersPanel();
+      };
+      if(CFG.pawns&&CFG.pawns.includes(k)&&CFG.pawns[i]!==k)b.disabled=true;
+      if(CFG.pawns&&CFG.pawns[i]===k)b.classList.add("sel");
+      sel.appendChild(b);
+    }
+    row.appendChild(el("label",{},human?(i===0?"Игрок":"Игрок "+(i+1)):"Компьютер "+(i+1)));
+    row.appendChild(nameInput);
+    row.appendChild(sel);
+    box.appendChild(row);
+  }
+  $("btnStart").onclick=start;
+}
+function start(){
+  const pawns=CFG.pawns?[...CFG.pawns]:[-1,-1,-1,-1];
+  const taken=[];
+  for(let i=0;i<4;i++){
+    if(pawns[i]<0){let k;do{k=Math.floor(Math.random()*PAWN_DEFS.length);}while(taken.includes(k));pawns[i]=k;}
+    taken.push(pawns[i]);
+  }
+  const names=[...CFG.names];
+  for(let i=0;i<4;i++)if(!names[i])names[i]=CFG.mode==="ai"?(i===0?"Ты":"Компьютер "+(i+1)):("Строитель "+(i+1));
+  const humans=CFG.mode==="ai"?[0]:[0,1,2,3].slice(0,CFG.humans.length);
+  startGame({humans,pawns,names});
+}
+
+/* ================= ФОН (звёзды и сверкалки) ================= */
+function makeSky(){
+  const bg=$("bg");
+  for(let i=0;i<140;i++){
+    const s=el("div",{class:"star"});
+    const size=1+Math.random()*3.5;
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${size}px;height:${size}px;--t:${1.2+Math.random()*3}s;animation-delay:${Math.random()*4}s;`;
+    bg.appendChild(s);
+  }
+  for(let i=0;i<46;i++){
+    const s=el("div",{class:"spark"});
+    const sz=4+Math.random()*8;
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--s:${sz}px;--t:${0.8+Math.random()*2.2}s;animation-delay:${Math.random()*4}s;`;
+    bg.appendChild(s);
+  }
+  for(let i=0;i<16;i++){
+    const s=el("div",{class:"floaty"});
+    s.style.left=(Math.random()*100)+"vw";
+    s.style.width=s.style.height=(4+Math.random()*6)+"px";
+    s.style.animationDuration=(7+Math.random()*9)+"s";
+    s.style.animationDelay=(Math.random()*8)+"s";
+    bg.appendChild(s);
+  }
+  setInterval(()=>{randSparkle();},900);
+}
+function randSparkle(){
+  const s=el("div",{class:"spark"});
+  const sz=4+Math.random()*10;
+  s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--s:${sz}px;--t:1s;animation:spk 1s ease-in-out;`;
+  document.body.appendChild(s);
+  setTimeout(()=>s.remove(),1100);
+}
+function burst(x,y,n){
+  n=n||14;
+  for(let i=0;i<n;i++){
+    const s=el("div",{class:"burst"});
+    const sz=5+Math.random()*9;
+    s.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--t:${0.5+Math.random()*0.5}s;
+      --x:${(Math.random()*180-90)}px;--y:${(Math.random()*140-70)}px;`;
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1100);
+  }
+}
+function burstAt(id,n){
+  const r=document.getElementById(id).getBoundingClientRect();
+  burst(r.left+r.width/2, r.top+r.height/2, n);
+}
+function burstBoard(n){
+  const r=document.getElementById("board").getBoundingClientRect();
+  burst(r.left+r.width/2, r.top+r.height/2, n);
+}
+$("btnNew").onclick=()=>{location.reload();};
+makeSky();
+setupScreen();
+</script>
+</body>
+</html>
