@@ -232,6 +232,19 @@ body{
     <div class="panel" style="text-align:center">
       <button class="btn big" id="btnStart">НАЧАТЬ СТРОЙКУ</button>
     </div>
+
+    <div class="panel">
+      <h2>3. Печать настольной версии</h2>
+      <div class="row" id="printLinks"></div>
+      <div style="font-size:12px; color:var(--muted)">Файлы лежат рядом в папке <b>print/</b>.
+      Если их нет — запусти <b>python generate_print.py</b>.</div>
+    </div>
+
+    <div class="panel">
+      <h2>4. Память игр</h2>
+      <div id="memList"></div>
+      <button class="btn ghost small" id="btnClearMem" style="margin-top:10px">Очистить память</button>
+    </div>
   </div>
 
   <!-- ============ ИГРА ============ -->
@@ -594,6 +607,7 @@ function win(p){
   G.winner=p.idx;
   G.phase="done";
   logMsg(`👑 ${p.name} победил!`);
+  rememberGame(p.name, Math.max(p.floors,3));
   renderAll();
   showWin(p);
   return true;
@@ -601,6 +615,7 @@ function win(p){
 function finishByScore(){
   const ps=[...G.players].sort((a,b)=>b.floors-a.floors||(sum(b)-sum(a)));
   logMsg("Ходы закончились. Победа по башням!");
+  rememberGame(ps[0].name, ps[0].floors);
   renderAll();
   showWin(ps[0]);
 }
@@ -618,76 +633,66 @@ function showGame(){$("screenSetup").hidden=true;$("screenGame").hidden=false;}
 function renderAll(){renderBoard();renderPlayers();renderDice();renderAction();}
 
 function renderBoard(){
-  const svg=$("board"); svg.innerHTML="";
-  const defs=el("defs","",`
-    <radialGradient id="bgStar" cx="50%" cy="50%"><stop offset="0%" stop-color="#fff" stop-opacity=".92"/><stop offset="100%" stop-color="#eaf1ff" stop-opacity=".85"/></radialGradient>
-    <linearGradient id="goldEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffe28a"/><stop offset="50%" stop-color="#ffb300"/><stop offset="100%" stop-color="#ffe28a"/>
-    </linearGradient>`);
-  svg.appendChild(defs);
-  // корпус звезды
+  const svg=$("board");
   const v=vertices();
   const pts=v.map(p=>p.join(",")).join(" ");
-  svg.appendChild(el("polygon",{points:pts,fill:"rgba(220,232,248,.14)",stroke:"url(#goldEdge)",strokeWidth:3,"stroke-opacity":.7,class:"edgePulse"}));
-  // мэрия
-  svg.appendChild(el("circle",{cx:CX,cy:CY,r:58,fill:"rgba(255,255,255,.92)",stroke:"rgba(255,190,60,.8)",strokeWidth:2}));
-  svg.appendChild(el("text",{x:CX,y:CY-16,fill:"#1c2440","text-anchor":"middle","font-size":13,"font-weight":"800"},"МЭРИЯ"));
-  svg.appendChild(el("text",{x:CX,y:CY,fill:"#5a6a88","text-anchor":"middle","font-size":6.5},"Обойди звезду и построй башню"));
-  svg.appendChild(el("text",{x:CX,y:CY+10,fill:"#c94a2a","text-anchor":"middle","font-size":8,"font-weight":"800"},"Этаж = 3 материала"));
-  svg.appendChild(el("circle",{cx:CX,cy:CY+26,r:12,fill:"none",stroke:"rgba(255,190,60,.5)",strokeWidth:1.5}));
+  // Поле собираем строкой и вставляем через innerHTML: так SVG рендерится
+  // в любом браузере (createElement без namespace для SVG не работает).
+  let s=`<defs>
+    <linearGradient id="goldEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe28a"/><stop offset="50%" stop-color="#ffb300"/><stop offset="100%" stop-color="#ffe28a"/>
+    </linearGradient></defs>
+    <polygon points="${pts}" fill="rgba(220,232,248,.14)" stroke="url(#goldEdge)" stroke-width="3" stroke-opacity=".7" class="edgePulse"/>
+    <circle cx="${CX}" cy="${CY}" r="58" fill="rgba(255,255,255,.92)" stroke="rgba(255,190,60,.8)" stroke-width="2"/>
+    <text x="${CX}" y="${CY-16}" fill="#1c2440" text-anchor="middle" font-size="13" font-weight="800">МЭРИЯ</text>
+    <text x="${CX}" y="${CY}" fill="#5a6a88" text-anchor="middle" font-size="6.5">Обойди звезду и построй башню</text>
+    <text x="${CX}" y="${CY+10}" fill="#c94a2a" text-anchor="middle" font-size="8" font-weight="800">Этаж = 3 материала</text>
+    <circle cx="${CX}" cy="${CY+26}" r="12" fill="none" stroke="rgba(255,190,60,.5)" stroke-width="1.5"/>`;
   // башни
-  for(let s=0;s<4;s++){
-    const tip=v[2*s]; const dx=tip[0]-CX,dy=tip[1]-CY; const L=Math.hypot(dx,dy);
+  for(let s2=0;s2<4;s2++){
+    const tip=v[2*s2]; const dx=tip[0]-CX,dy=tip[1]-CY; const L=Math.hypot(dx,dy);
     const ux=dx/L,uy=dy/L;
-    const p=G?G.players[s]:null; const floors=p?p.floors:0;
+    const p=G?G.players[s2]:null; const floors=p?p.floors:0;
     for(let k=0;k<3;k++){
       const dist=0.46*ROUT+k*0.12*ROUT;
       const tx=CX+ux*dist, ty=CY+uy*dist;
       const w=15,h=9;
       const on=floors>=k+1;
-      svg.appendChild(el("rect",{x:tx-w/2,y:ty-h/2,width:w,height:h,rx:2.5,
-        fill:on?"url(#goldEdge)":"rgba(255,255,255,.25)",stroke:PLAYER_COLORS[s],strokeWidth:1.6}));
-      svg.appendChild(el("text",{x:tx,y:ty+2.5,fill:on?"#231a06":PLAYER_COLORS[s],"text-anchor":"middle","font-size":6.5,"font-weight":"800"},k+1));
+      s+=`<rect x="${(tx-w/2).toFixed(1)}" y="${(ty-h/2).toFixed(1)}" width="${w}" height="${h}" rx="2.5"
+        fill="${on?"url(#goldEdge)":"rgba(255,255,255,.25)"}" stroke="${PLAYER_COLORS[s2]}" stroke-width="1.6"/>`;
+      s+=`<text x="${tx.toFixed(1)}" y="${(ty+2.5).toFixed(1)}" fill="${on?"#231a06":PLAYER_COLORS[s2]}" text-anchor="middle" font-size="6.5" font-weight="800">${k+1}</text>`;
     }
     // кран-палочка у башни
     const bx=CX+ux*(0.46*ROUT)-uy*11, by=CY+uy*(0.46*ROUT)+ux*11;
-    svg.appendChild(el("line",{x1:bx-ux*6,y1:by-uy*6,x2:bx+ux*8,y2:by+uy*8,stroke:"#8897aa",strokeWidth:2}));
-    svg.appendChild(el("line",{x1:bx+ux*8,y1:by+uy*8,x2:bx+ux*8+uy*5,y2:by+uy*8-ux*5,stroke:"#8897aa",strokeWidth:2}));
-    svg.appendChild(el("circle",{cx:bx+ux*8+uy*5,cy:by+uy*8-ux*5,r:1.8,fill:"#e0553c"}));
+    s+=`<line x1="${(bx-ux*6).toFixed(1)}" y1="${(by-uy*6).toFixed(1)}" x2="${(bx+ux*8).toFixed(1)}" y2="${(by+uy*8).toFixed(1)}" stroke="#8897aa" stroke-width="2"/>`;
+    s+=`<line x1="${(bx+ux*8).toFixed(1)}" y1="${(by+uy*8).toFixed(1)}" x2="${(bx+ux*8+uy*5).toFixed(1)}" y2="${(by+uy*8-ux*5).toFixed(1)}" stroke="#8897aa" stroke-width="2"/>`;
+    s+=`<circle cx="${(bx+ux*8+uy*5).toFixed(1)}" cy="${(by+uy*8-ux*5).toFixed(1)}" r="1.8" fill="#e0553c"/>`;
   }
   // клетки
   for(const c of CELLS){
     const r=c.type==="BASE"?20:14.5;
     const isActiveBase=G&&G.turn===c.player&&c.type==="BASE";
-    const circle=el("circle",{cx:c.x,cy:c.y,r,fill:cellFill(c.type,c.mat,c.player),
-      stroke:cellBorder(c.type,c.mat,c.player),strokeWidth:c.type==="BASE"?3:2.2});
-    if(isActiveBase){circle.setAttribute("class","cellGlow");circle.setAttribute("style",`--glowc:${PLAYER_COLORS[c.player]}`);}
-    else{circle.setAttribute("class","cellShine");circle.setAttribute("style",`animation-delay:${(c.i*0.23)%4}s`);}
-    svg.appendChild(circle);
+    const cls=isActiveBase?`class="cellGlow" style="--glowc:${PLAYER_COLORS[c.player]}"`:`class="cellShine" style="animation-delay:${(c.i*0.23)%4}s"`;
+    s+=`<circle cx="${c.x}" cy="${c.y}" r="${r}" fill="${cellFill(c.type,c.mat,c.player)}"
+      stroke="${cellBorder(c.type,c.mat,c.player)}" stroke-width="${c.type==="BASE"?3:2.2}" ${cls}/>`;
     if(c.type==="BASE"){
-      svg.appendChild(el("text",{x:c.x,y:c.y-3,fill:"#fff","text-anchor":"middle","font-size":8.5,"font-weight":"800"},"БАЗА"));
-      svg.appendChild(el("text",{x:c.x,y:c.y+7,fill:"#fff","text-anchor":"middle","font-size":5.5,"font-weight":"700"},cellLabel(c.type,c.mat,c.player)));
+      s+=`<text x="${c.x}" y="${c.y-3}" fill="#fff" text-anchor="middle" font-size="8.5" font-weight="800">БАЗА</text>`;
+      s+=`<text x="${c.x}" y="${c.y+7}" fill="#fff" text-anchor="middle" font-size="5.5" font-weight="700">${cellLabel(c.type,c.mat,c.player)}</text>`;
     }else{
-      const g=el("g",{transform:`translate(${c.x},${c.y}) scale(0.38) translate(-37,-37)`});
-      g.innerHTML=cellIcon(c.type,c.mat);
-      g.setAttribute("class",c.type==="EVENT"?"twink":"");
-      svg.appendChild(g);
+      s+=`<g transform="translate(${c.x},${c.y}) scale(0.38) translate(-37,-37)" ${c.type==="EVENT"?'class="twink"':""}>${cellIcon(c.type,c.mat)}</g>`;
     }
-    svg.appendChild(el("text",{x:c.x-3,y:c.y+20,fill:"#aebbd6","font-size":4.5},c.i+1));
+    s+=`<text x="${c.x-3}" y="${c.y+20}" fill="#aebbd6" font-size="4.5">${c.i+1}</text>`;
   }
   // фишки
   for(const p of G?G.players:[]){
     const c=CELLS[p.pos];
     const off=[[-9,9],[9,-9],[-9,-9],[9,9]][p.idx];
-    const g=el("g",{transform:`translate(${c.x+off[0]},${c.y+off[1]})`});
-    const ring=el("circle",{r:13,fill:"#fff",stroke:PLAYER_COLORS[p.idx],strokeWidth:2.5});
-    if(G.turn===p.idx)ring.setAttribute("class","pawnGlow");
-    g.appendChild(ring);
-    const inner=el("g",{transform:"scale(.3) translate(-167,-167)"});
-    inner.innerHTML=pawnIcon(PAWN_DEFS[p.pawn][1],PLAYER_COLORS[p.idx]);
-    g.appendChild(inner);
-    svg.appendChild(g);
+    const glow=G.turn===p.idx?'class="pawnGlow"':"";
+    s+=`<g transform="translate(${c.x+off[0]},${c.y+off[1]})">
+      <circle r="13" fill="#fff" stroke="${PLAYER_COLORS[p.idx]}" stroke-width="2.5" ${glow}/>
+      <g transform="scale(.3) translate(-167,-167)">${pawnIcon(PAWN_DEFS[p.pawn][1],PLAYER_COLORS[p.idx])}</g></g>`;
   }
+  svg.innerHTML=s;
 }
 function renderPlayers(){
   const box=$("players"); box.innerHTML="";
@@ -786,6 +791,9 @@ function setupScreen(){
   $("modeAi").onclick=()=>{setMode("ai");};
   $("modeLocal").onclick=()=>{setMode("local");};
   renderPlayersPanel();
+  setupPrint();
+  renderMem();
+  $("btnClearMem").onclick=()=>{if(confirm("Очистить память игр?")){saveMem([]);renderMem();}};
 }
 function setMode(m){CFG.mode=m;
   $("modeAi").classList.toggle("sel",m==="ai");
@@ -849,6 +857,60 @@ function start(){
   for(let i=0;i<4;i++)if(!names[i])names[i]=CFG.mode==="ai"?(i===0?"Ты":"Компьютер "+(i+1)):("Строитель "+(i+1));
   const humans=CFG.mode==="ai"?[0]:[0,1,2,3].slice(0,CFG.humans.length);
   startGame({humans,pawns,names});
+}
+
+/* ================= ПЕЧАТЬ ================= */
+const PRINT_FILES=[
+  ["Поле A2", "print/board_a2.pdf"],
+  ["Карточки материалов", "print/cards_materials.pdf"],
+  ["Карточки событий 1", "print/cards_events_0.pdf"],
+  ["Карточки событий 2", "print/cards_events_1.pdf"],
+  ["Фишки", "print/pawns.pdf"],
+  ["Кубики", "print/dice.pdf"],
+  ["Правила", "print/rules.pdf"]
+];
+function setupPrint(){
+  const box=$("printLinks"); box.innerHTML="";
+  for(const[n,href]of PRINT_FILES){
+    const a=document.createElement("a");
+    a.href=href; a.target="_blank"; a.rel="noopener";
+    a.className="modeBtn"; a.setAttribute("style","flex:1 1 210px;min-width:210px;text-align:center;text-decoration:none;display:block");
+    a.innerHTML=`<b>${n}</b>`;
+    box.appendChild(a);
+  }
+}
+
+/* ================= ПАМЯТЬ ИГР (localStorage) ================= */
+const MEM_KEY="buildstars_history";
+function loadMem(){
+  try{const v=JSON.parse(localStorage.getItem(MEM_KEY));return Array.isArray(v)?v:[];}catch(e){return[];}
+}
+function saveMem(list){
+  try{localStorage.setItem(MEM_KEY,JSON.stringify(list));}catch(e){}
+}
+function rememberGame(winner,floors){
+  const rec={date:new Date().toLocaleString(),winner:winner,floors:floors,
+    turns:G?G.turns:0,players:(G?G.players:[]).map(p=>({name:p.name,human:p.human,floors:p.floors}))};
+  const list=loadMem(); list.unshift(rec); if(list.length>50)list.length=50;
+  saveMem(list);
+  renderMem();
+}
+function renderMem(){
+  const box=$("memList"); if(!box)return; box.innerHTML="";
+  const list=loadMem();
+  if(!list.length){
+    box.appendChild(el("div",{style:"color:var(--muted);font-size:13px"},"Пока ни одной сыгранной партии. Победители будут сохраняться сюда."));
+    return;
+  }
+  for(const r of list){
+    const d=el("div",{style:"display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid rgba(150,180,255,.1);padding:7px 0;font-size:13px"});
+    const left=el("span",{},"");
+    left.appendChild(el("b",{style:"color:var(--gold)"},r.winner));
+    left.appendChild(el("span",{style:"color:var(--muted)"},` — башня ${r.floors} эт., ${r.turns} круг.`));
+    d.appendChild(left);
+    d.appendChild(el("span",{style:"color:var(--muted)"},r.date));
+    box.appendChild(d);
+  }
 }
 
 /* ================= ФОН (звёзды и сверкалки) ================= */
